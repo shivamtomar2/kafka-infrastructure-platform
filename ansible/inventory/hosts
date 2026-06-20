@@ -1,0 +1,10 @@
+
+[kafka]
+broker1 ansible_host=10.0.2.164
+broker2 ansible_host=10.0.3.75
+broker3 ansible_host=10.0.4.127
+
+[kafka:vars]
+ansible_user=ubuntu
+ansible_ssh_private_key_file=~/.ssh/kafka-key.pem
+ansible_ssh_common_args='-o StrictHostKeyChecking=no -o ProxyCommand="ssh -W %h:%p -i ~/.ssh/kafka-key.pem ubuntu@13.220.128.106"'

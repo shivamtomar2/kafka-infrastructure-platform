@@ -1,0 +1,33 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# Virtual Environment
+venv/
+.venv/
+
+# Terraform
+.terraform/
+*.tfstate
+*.tfstate.*
+.terraform.lock.hcl
+
+# Secrets
+*.pem
+*.key
+terraform.tfvars
+
+# Ansible
+.retry
+
+# Logs
+*.log
+
+# Generated files
+all-files.txt
+project-structure.txt
+
+# OS
+.DS_Store
+Thumbs.db

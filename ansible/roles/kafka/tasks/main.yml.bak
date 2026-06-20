@@ -1,0 +1,29 @@
+---
+- name: Create Kafka directory
+  file:
+    path: /opt/kafka
+    state: directory
+    mode: '0755'
+
+- name: Download Kafka
+  get_url:
+    url: https://archive.apache.org/dist/kafka/3.7.1/kafka_2.13-3.7.1.tgz
+    dest: /tmp/kafka.tgz
+    mode: '0644'
+
+- name: Extract Kafka
+  unarchive:
+    src: /tmp/kafka.tgz
+    dest: /opt/kafka
+    remote_src: yes
+    extra_opts:
+      - --strip-components=1
+
+- name: Verify Kafka Installation
+  command: /opt/kafka/bin/kafka-topics.sh --version
+  register: kafka_version
+  changed_when: false
+
+- name: Display Kafka Version
+  debug:
+    var: kafka_version.stdout_lines
