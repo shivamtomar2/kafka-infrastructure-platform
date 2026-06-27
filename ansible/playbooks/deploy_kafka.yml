@@ -1,6 +1,8 @@
 ---
-- hosts: kafka
-  become: yes
+- name: Configure Kafka Cluster
+  hosts: role_kafka
+  become: true
+  gather_facts: true
 
   roles:
     - java

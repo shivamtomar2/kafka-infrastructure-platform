@@ -5,9 +5,24 @@ regions:
 
 filters:
   instance-state-name: running
-
-keyed_groups:
-  - key: tags.Name
+  tag:Project: Kafka-Infrastructure-Platform
+  tag:Role: kafka
 
 hostnames:
+  - tag:Name
   - private-ip-address
+
+compose:
+  ansible_host: private_ip_address
+
+keyed_groups:
+  - prefix: role
+    key: ec2_tags.Role
+
+  - prefix: env
+    key: ec2_tags.Environment
+
+  - prefix: cluster
+    key: ec2_tags.Cluster
+
+strict: false

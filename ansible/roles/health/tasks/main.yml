@@ -1,0 +1,37 @@
+---
+- name: Check Kafka service status
+  systemd:
+    name: kafka
+  register: kafka_service
+
+- name: Display Kafka service status
+  debug:
+    msg: "Kafka service state: {{ kafka_service.status.ActiveState }}"
+
+- name: Check Kafka port 9092
+  wait_for:
+    port: 9092
+    timeout: 5
+
+- name: Check Kafka port 9093
+  wait_for:
+    port: 9093
+    timeout: 5
+
+- name: Check Kafka process
+  shell: jps
+  register: kafka_jps
+  changed_when: false
+
+- name: Display Kafka process
+  debug:
+    var: kafka_jps.stdout_lines
+
+- name: Verify Kafka Version
+  command: "{{ kafka_install_dir }}/bin/kafka-topics.sh --version"
+  register: kafka_version
+  changed_when: false
+
+- name: Display Kafka Version
+  debug:
+    var: kafka_version.stdout_lines
