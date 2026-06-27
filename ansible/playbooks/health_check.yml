@@ -1,0 +1,8 @@
+---
+- name: Kafka Health Check
+  hosts: role_kafka
+  become: true
+  gather_facts: false
+
+  roles:
+    - health

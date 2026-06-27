@@ -24,8 +24,10 @@ resource "aws_instance" "bastion" {
 
   tags = {
     Name        = "kafka-bastion"
-    Environment = var.environment
     Project     = "Kafka-Infrastructure-Platform"
+    Environment = var.environment
+
+    Role = "bastion"
   }
 }
 
@@ -40,7 +42,11 @@ resource "aws_instance" "kafka_brokers" {
 
   tags = {
     Name        = "kafka-broker-0${count.index + 1}"
-    Environment = var.environment
     Project     = "Kafka-Infrastructure-Platform"
+    Environment = var.environment
+
+    Role     = "kafka"
+    Cluster  = "kafka-cluster"
+    BrokerId = tostring(count.index + 1)
   }
 }
