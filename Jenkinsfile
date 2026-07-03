@@ -113,9 +113,9 @@ pipeline {
             echo ' Check stage logs'
             echo '======================================='
         }
+	always {
+		echo "Pipeline finished."
+	}
 
-        always {
-            cleanWs()
-        }
     }
 }
