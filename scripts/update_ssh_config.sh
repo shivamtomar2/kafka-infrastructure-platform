@@ -18,29 +18,39 @@ Host kafka-bastion
     User ubuntu
     IdentityFile ~/.ssh/kafka-key.pem
     ForwardAgent yes
+    StrictHostKeyChecking no
+    UserKnownHostsFile /dev/null
 
 Host kafka-broker-01
     HostName $BROKER1
     User ubuntu
     IdentityFile ~/.ssh/kafka-key.pem
     ProxyJump kafka-bastion
+    StrictHostKeyChecking no
+    UserKnownHostsFile /dev/null
 
 Host kafka-broker-02
     HostName $BROKER2
     User ubuntu
     IdentityFile ~/.ssh/kafka-key.pem
     ProxyJump kafka-bastion
+    StrictHostKeyChecking no
+    UserKnownHostsFile /dev/null
 
 Host kafka-broker-03
     HostName $BROKER3
     User ubuntu
     IdentityFile ~/.ssh/kafka-key.pem
     ProxyJump kafka-bastion
+    StrictHostKeyChecking no
+    UserKnownHostsFile /dev/null
 
 Host 10.0.*
     User ubuntu
     IdentityFile ~/.ssh/kafka-key.pem
     ProxyJump kafka-bastion
+    StrictHostKeyChecking no
+    UserKnownHostsFile /dev/null
 EOF
 
 chmod 600 ~/.ssh/config
@@ -49,7 +59,25 @@ echo
 echo "SSH config updated successfully!"
 echo
 
+echo "=============================="
+echo "SSH Configuration Verification"
+echo "=============================="
+
+echo
+echo "Bastion:"
 ssh -G kafka-bastion | grep hostname
+
+echo
+echo "Broker 01:"
 ssh -G kafka-broker-01 | grep hostname
+
+echo
+echo "Broker 02:"
 ssh -G kafka-broker-02 | grep hostname
+
+echo
+echo "Broker 03:"
 ssh -G kafka-broker-03 | grep hostname
+
+echo
+echo "Done."
