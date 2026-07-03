@@ -9,3 +9,7 @@ output "bastion_public_ip" {
 output "kafka_broker_private_ips" {
   value = module.ec2.kafka_broker_private_ips
 }
+output "artifact_bucket_name" {
+  description = "Kafka artifacts S3 bucket name"
+  value       = module.s3.bucket_name
+}

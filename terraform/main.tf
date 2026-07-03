@@ -28,3 +28,9 @@ module "ec2" {
   bastion_sg_id         = module.security_group.bastion_sg_id
   kafka_sg_id           = module.security_group.kafka_sg_id
 }
+
+module "s3" {
+  source = "./modules/s3"
+
+  environment = var.environment
+}
