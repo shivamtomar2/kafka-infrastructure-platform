@@ -1,29 +1,90 @@
 ---
 - name: Create Kafka directory
   file:
-    path: /opt/kafka
+    path: "{{ kafka_install_dir }}"
     state: directory
     mode: '0755'
 
+- name: Check if Kafka is already installed
+  stat:
+    path: "{{ kafka_install_dir }}/bin/kafka-server-start.sh"
+  register: kafka_installed
+
 - name: Download Kafka
   get_url:
-    url: https://archive.apache.org/dist/kafka/3.7.1/kafka_2.13-3.7.1.tgz
+    url: "{{ kafka_download_url }}"
     dest: /tmp/kafka.tgz
     mode: '0644'
+  when: not kafka_installed.stat.exists
 
 - name: Extract Kafka
   unarchive:
     src: /tmp/kafka.tgz
-    dest: /opt/kafka
+    dest: "{{ kafka_install_dir }}"
     remote_src: yes
     extra_opts:
       - --strip-components=1
+  when: not kafka_installed.stat.exists
 
-- name: Verify Kafka Installation
-  command: /opt/kafka/bin/kafka-topics.sh --version
-  register: kafka_version
+- name: Set Kafka ownership
+  file:
+    path: "{{ kafka_install_dir }}"
+    owner: ubuntu
+    group: ubuntu
+    recurse: yes
+
+- name: Deploy Kafka Configuration
+  template:
+    src: server.properties.j2
+    dest: "{{ kafka_install_dir }}/config/kraft/server.properties"
+    mode: '0644'
+  notify: Restart Kafka
+
+- name: Deploy Kafka systemd service
+  template:
+    src: kafka.service.j2
+    dest: /etc/systemd/system/kafka.service
+    mode: '0644'
+  notify: Restart Kafka
+
+- name: Create Kafka Data Directory
+  file:
+    path: "{{ kafka_log_dir }}"
+    state: directory
+    owner: ubuntu
+    group: ubuntu
+    mode: '0755'
+
+- name: Check if Kafka storage is already formatted
+  stat:
+    path: "{{ kafka_log_dir }}/meta.properties"
+  register: kafka_storage
+
+- name: Format Kafka Storage
+  shell: >
+    {{ kafka_install_dir }}/bin/kafka-storage.sh format
+    --ignore-formatted
+    -t {{ kafka_cluster_id }}
+    -c {{ kafka_install_dir }}/config/kraft/server.properties
+  when: not kafka_storage.stat.exists
+
+- name: Enable Kafka service
+  systemd:
+    name: kafka
+    enabled: yes
+    state: started
+    daemon_reload: yes
+
+- name: Wait for Kafka
+  wait_for:
+    port: 9092
+    timeout: 60
+
+- name: Verify Kafka Version
+  command: "{{ kafka_install_dir }}/bin/kafka-topics.sh --version"
+  register: kafka_version_output
   changed_when: false
 
 - name: Display Kafka Version
   debug:
-    var: kafka_version.stdout_lines
+    var: kafka_version_output.stdout_lines

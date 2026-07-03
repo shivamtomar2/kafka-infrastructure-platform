@@ -1,20 +1,55 @@
 ---
+# ----------------------------------------------------
+# LOCAL CACHE (Runs only once)
+# ----------------------------------------------------
+
+- name: Create local Kafka cache directory
+  run_once: true
+  delegate_to: localhost
+  become: false
+  file:
+    path: "{{ kafka_cache_dir }}"
+    state: directory
+    mode: "0755"
+
+- name: Check local Kafka archive
+  run_once: true
+  delegate_to: localhost
+  become: false
+  stat:
+    path: "{{ kafka_cache_dir }}/kafka_{{ kafka_scala_version }}-{{ kafka_version }}.tgz"
+  register: local_kafka_archive
+
+- name: Download Kafka archive locally
+  run_once: true
+  delegate_to: localhost
+  become: false
+  get_url:
+    url: "{{ kafka_download_url }}"
+    dest: "{{ kafka_cache_dir }}/kafka_{{ kafka_scala_version }}-{{ kafka_version }}.tgz"
+    mode: "0644"
+  when: not local_kafka_archive.stat.exists
+
+# ----------------------------------------------------
+# REMOTE INSTALL
+# ----------------------------------------------------
+
 - name: Create Kafka directory
   file:
     path: "{{ kafka_install_dir }}"
     state: directory
-    mode: '0755'
+    mode: "0755"
 
 - name: Check if Kafka is already installed
   stat:
     path: "{{ kafka_install_dir }}/bin/kafka-server-start.sh"
   register: kafka_installed
 
-- name: Download Kafka
-  get_url:
-    url: "{{ kafka_download_url }}"
+- name: Copy Kafka archive to broker
+  copy:
+    src: "{{ kafka_cache_dir }}/kafka_{{ kafka_scala_version }}-{{ kafka_version }}.tgz"
     dest: /tmp/kafka.tgz
-    mode: '0644'
+    mode: "0644"
   when: not kafka_installed.stat.exists
 
 - name: Extract Kafka
@@ -24,6 +59,12 @@
     remote_src: yes
     extra_opts:
       - --strip-components=1
+  when: not kafka_installed.stat.exists
+
+- name: Remove Kafka archive after extraction
+  file:
+    path: /tmp/kafka.tgz
+    state: absent
   when: not kafka_installed.stat.exists
 
 - name: Set Kafka ownership
@@ -37,14 +78,14 @@
   template:
     src: server.properties.j2
     dest: "{{ kafka_install_dir }}/config/kraft/server.properties"
-    mode: '0644'
+    mode: "0644"
   notify: Restart Kafka
 
 - name: Deploy Kafka systemd service
   template:
     src: kafka.service.j2
     dest: /etc/systemd/system/kafka.service
-    mode: '0644'
+    mode: "0644"
   notify: Restart Kafka
 
 - name: Create Kafka Data Directory
@@ -53,7 +94,7 @@
     state: directory
     owner: ubuntu
     group: ubuntu
-    mode: '0755'
+    mode: "0755"
 
 - name: Check if Kafka storage is already formatted
   stat:
