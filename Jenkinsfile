@@ -3,6 +3,7 @@ pipeline {
     agent any
 
     options {
+        skipDefaultCheckout(true)
         timestamps()
         disableConcurrentBuilds()
         buildDiscarder(logRotator(numToKeepStr: '10'))
@@ -49,7 +50,7 @@ pipeline {
         stage('Terraform Plan') {
             steps {
                 dir("${TF_DIR}") {
-                    sh 'terraform plan'
+                    sh 'terraform plan -out=tfplan'
                 }
             }
         }
@@ -57,7 +58,7 @@ pipeline {
         stage('Terraform Apply') {
             steps {
                 dir("${TF_DIR}") {
-                    sh 'terraform apply -auto-approve'
+                    sh 'terraform apply -auto-approve tfplan'
                 }
             }
         }
@@ -74,13 +75,33 @@ pipeline {
             }
         }
 
+        stage('Prepare Ansible Environment') {
+            steps {
+                dir("${ANSIBLE_DIR}") {
+                    sh '''
+                    python3 -m venv .venv
+
+                    . .venv/bin/activate
+
+                    python -m pip install --upgrade pip
+
+                    pip install -r requirements.txt
+
+                    ansible-galaxy collection install amazon.aws
+                    '''
+                }
+            }
+        }
+
         stage('Deploy Kafka') {
             steps {
                 dir("${ANSIBLE_DIR}") {
                     sh '''
+                    . .venv/bin/activate
+
                     ansible-playbook \
-                    -i aws_ec2.yml \
-                    playbooks/deploy_kafka.yml
+                        -i aws_ec2.yml \
+                        playbooks/deploy_kafka.yml
                     '''
                 }
             }
@@ -90,9 +111,11 @@ pipeline {
             steps {
                 dir("${ANSIBLE_DIR}") {
                     sh '''
+                    . .venv/bin/activate
+
                     ansible-playbook \
-                    -i aws_ec2.yml \
-                    playbooks/health_check.yml
+                        -i aws_ec2.yml \
+                        playbooks/health_check.yml
                     '''
                 }
             }
@@ -113,9 +136,9 @@ pipeline {
             echo ' Check stage logs'
             echo '======================================='
         }
-	always {
-		echo "Pipeline finished."
-	}
 
+        always {
+            echo "Pipeline finished."
+        }
     }
 }
