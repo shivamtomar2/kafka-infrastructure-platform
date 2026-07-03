@@ -16,7 +16,6 @@ venv/
 # Secrets
 *.pem
 *.key
-terraform.tfvars
 
 # Ansible
 .retry
