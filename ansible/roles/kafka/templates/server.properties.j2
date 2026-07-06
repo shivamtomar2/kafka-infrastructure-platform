@@ -16,4 +16,22 @@ listener.security.protocol.map=CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
 
 log.dirs={{ kafka_log_dir }}
 
+###############################
+# Cluster Settings
+###############################
+
 num.partitions=3
+
+default.replication.factor=3
+
+offsets.topic.replication.factor=3
+
+transaction.state.log.replication.factor=3
+
+transaction.state.log.min.isr=2
+
+min.insync.replicas=2
+
+group.initial.rebalance.delay.ms=0
+
+auto.create.topics.enable=true

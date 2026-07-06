@@ -1,9 +1,22 @@
 ---
 - name: Configure Kafka Cluster
   hosts: role_kafka
+
   become: true
-  gather_facts: true
+  gather_facts: false
+
+  strategy: free
+  any_errors_fatal: true
+
+  pre_tasks:
+    - name: Gather required facts
+      setup:
 
   roles:
-    - java
-    - kafka
+    - role: java
+      tags:
+        - java
+
+    - role: kafka
+      tags:
+        - kafka

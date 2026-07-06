@@ -1,12 +1,10 @@
 ---
-- name: Update apt cache
-  apt:
-    update_cache: yes
-
-- name: Install Java 17
+- name: Install OpenJDK 17
   apt:
     name: openjdk-17-jdk
     state: present
+    update_cache: yes
+    cache_valid_time: 86400
 
 - name: Verify Java Installation
   command: java -version

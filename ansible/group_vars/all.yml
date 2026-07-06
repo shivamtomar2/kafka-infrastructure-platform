@@ -5,12 +5,15 @@
 
 ansible_user: ubuntu
 
+ansible_python_interpreter: /usr/bin/python3
+
 ansible_ssh_private_key_file: ~/.ssh/kafka-key.pem
 
 ansible_ssh_common_args: >-
   -o StrictHostKeyChecking=no
   -o ForwardAgent=yes
   -o ProxyJump=kafka-bastion
+
 #################################################
 # Kafka Version
 #################################################
@@ -42,7 +45,10 @@ kafka_heap_xmx: "256M"
 #################################################
 
 kafka_install_dir: "/opt/kafka"
-
 kafka_log_dir: "/tmp/kraft-combined-logs"
+
+#################################################
 # Local Kafka artifact cache
+#################################################
+
 kafka_cache_dir: "{{ lookup('env','HOME') }}/.cache/kafka"
