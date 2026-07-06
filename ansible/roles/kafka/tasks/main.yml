@@ -1,3 +1,4 @@
+
 ---
 # ----------------------------------------------------
 # LOCAL CACHE (Runs only once)
@@ -34,7 +35,7 @@
 # REMOTE INSTALL
 # ----------------------------------------------------
 
-- name: Create Kafka directory
+- name: Create Kafka installation directory
   file:
     path: "{{ kafka_install_dir }}"
     state: directory
@@ -61,7 +62,7 @@
       - --strip-components=1
   when: not kafka_installed.stat.exists
 
-- name: Remove Kafka archive after extraction
+- name: Remove Kafka archive
   file:
     path: /tmp/kafka.tgz
     state: absent
@@ -73,8 +74,13 @@
     owner: ubuntu
     group: ubuntu
     recurse: yes
+  when: not kafka_installed.stat.exists
 
-- name: Deploy Kafka Configuration
+# ----------------------------------------------------
+# CONFIGURATION
+# ----------------------------------------------------
+
+- name: Deploy Kafka server.properties
   template:
     src: server.properties.j2
     dest: "{{ kafka_install_dir }}/config/kraft/server.properties"
@@ -88,7 +94,7 @@
     mode: "0644"
   notify: Restart Kafka
 
-- name: Create Kafka Data Directory
+- name: Create Kafka data directory
   file:
     path: "{{ kafka_log_dir }}"
     state: directory
@@ -96,30 +102,47 @@
     group: ubuntu
     mode: "0755"
 
-- name: Check if Kafka storage is already formatted
+# ----------------------------------------------------
+# KRaft STORAGE
+# ----------------------------------------------------
+
+- name: Check if Kafka storage is formatted
   stat:
     path: "{{ kafka_log_dir }}/meta.properties"
   register: kafka_storage
 
 - name: Format Kafka Storage
-  shell: >
+  command: >
     {{ kafka_install_dir }}/bin/kafka-storage.sh format
     --ignore-formatted
     -t {{ kafka_cluster_id }}
     -c {{ kafka_install_dir }}/config/kraft/server.properties
   when: not kafka_storage.stat.exists
 
-- name: Enable Kafka service
+# ----------------------------------------------------
+# SERVICE
+# ----------------------------------------------------
+
+- name: Reload systemd
+  systemd:
+    daemon_reload: yes
+
+- name: Enable and Start Kafka
   systemd:
     name: kafka
     enabled: yes
     state: started
-    daemon_reload: yes
 
-- name: Wait for Kafka
+- name: Wait for Kafka to become available
   wait_for:
+    host: "{{ ansible_host }}"
     port: 9092
-    timeout: 60
+    delay: 5
+    timeout: 120
+
+# ----------------------------------------------------
+# VALIDATION
+# ----------------------------------------------------
 
 - name: Verify Kafka Version
   command: "{{ kafka_install_dir }}/bin/kafka-topics.sh --version"
