@@ -34,7 +34,7 @@ pipeline {
         stage('Terraform Init') {
             steps {
                 dir("${TF_DIR}") {
-                    sh 'terraform init'
+                    sh 'terraform init -input=false'
                 }
             }
         }
@@ -50,7 +50,7 @@ pipeline {
         stage('Terraform Plan') {
             steps {
                 dir("${TF_DIR}") {
-                    sh 'terraform plan -out=tfplan'
+                    sh 'terraform plan -input=false -out=tfplan'
                 }
             }
         }
@@ -138,7 +138,7 @@ pipeline {
         }
 
         always {
-            echo "Pipeline finished."
+            echo 'Pipeline finished.'
         }
     }
 }
