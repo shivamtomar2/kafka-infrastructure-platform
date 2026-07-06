@@ -5,7 +5,6 @@
   become: true
   gather_facts: false
 
-  strategy: free
   any_errors_fatal: true
 
   pre_tasks:
