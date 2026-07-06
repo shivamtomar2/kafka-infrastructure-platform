@@ -118,7 +118,12 @@
     -t {{ kafka_cluster_id }}
     -c {{ kafka_install_dir }}/config/kraft/server.properties
   when: not kafka_storage.stat.exists
-
+- name: Set Kafka log directory ownership
+  file:
+    path: "{{ kafka_log_dir }}"
+    owner: ubuntu
+    group: ubuntu
+    recurse: yes
 # ----------------------------------------------------
 # SERVICE
 # ----------------------------------------------------
