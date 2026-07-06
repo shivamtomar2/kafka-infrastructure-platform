@@ -123,6 +123,7 @@
     path: "{{ kafka_log_dir }}"
     owner: ubuntu
     group: ubuntu
+    mode: "0755"
     recurse: yes
 # ----------------------------------------------------
 # SERVICE
