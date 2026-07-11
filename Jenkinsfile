@@ -11,8 +11,10 @@ pipeline {
     }
 
     environment {
-        TF_DIR = "terraform"
-        ANSIBLE_DIR = "ansible"
+        TF_DIR         = 'terraform'
+        ANSIBLE_DIR    = 'ansible'
+        ANSIBLE_CONFIG = "${WORKSPACE}/ansible/ansible.cfg"
+        PATH           = "/opt/homebrew/bin:/opt/anaconda3/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin"
     }
 
     stages {
@@ -20,6 +22,26 @@ pipeline {
         stage('Checkout') {
             steps {
                 checkout scm
+            }
+        }
+
+        stage('Verify Environment') {
+            steps {
+                sh '''
+                    set -e
+
+                    echo "Workspace: $WORKSPACE"
+                    echo "Home: $HOME"
+
+                    terraform version
+                    aws --version
+                    python3 --version
+                    git --version
+                    ssh -V
+
+                    aws sts get-caller-identity
+                    test -f "$HOME/.ssh/kafka-key.pem"
+                '''
             }
         }
 
@@ -58,20 +80,54 @@ pipeline {
         stage('Terraform Apply') {
             steps {
                 dir("${TF_DIR}") {
-                    sh 'terraform apply -auto-approve tfplan'
+                    sh 'terraform apply -input=false -auto-approve tfplan'
                 }
             }
         }
 
         stage('Update SSH Config') {
             steps {
-                sh './scripts/update_ssh_config.sh'
+                sh '''
+                    chmod +x scripts/update_ssh_config.sh
+                    ./scripts/update_ssh_config.sh
+                '''
             }
         }
 
         stage('Wait For SSH') {
             steps {
-                sleep(time: 30, unit: 'SECONDS')
+                sh '''
+                    set -e
+
+                    for host in kafka-bastion kafka-broker-01 kafka-broker-02 kafka-broker-03
+                    do
+                        echo "Waiting for $host..."
+
+                        ready=false
+
+                        for attempt in $(seq 1 18)
+                        do
+                            if ssh \
+                                -o BatchMode=yes \
+                                -o ConnectTimeout=10 \
+                                "$host" hostname >/dev/null 2>&1
+                            then
+                                echo "$host is ready."
+                                ready=true
+                                break
+                            fi
+
+                            echo "$host not ready - attempt $attempt/18"
+                            sleep 10
+                        done
+
+                        if [ "$ready" != "true" ]
+                        then
+                            echo "ERROR: $host did not become reachable."
+                            exit 1
+                        fi
+                    done
+                '''
             }
         }
 
@@ -79,15 +135,33 @@ pipeline {
             steps {
                 dir("${ANSIBLE_DIR}") {
                     sh '''
-                    python3 -m venv .venv
+                        set -e
 
-                    . .venv/bin/activate
+                        python3 -m venv .venv
+                        . .venv/bin/activate
 
-                    python -m pip install --upgrade pip
+                        python -m pip install --upgrade pip
+                        pip install -r requirements.txt
 
-                    pip install -r requirements.txt
+                        ansible-galaxy collection install amazon.aws --force
 
-                    ansible-galaxy collection install amazon.aws
+                        ansible --version
+                        ansible-inventory -i aws_ec2.yml --graph
+                    '''
+                }
+            }
+        }
+
+        stage('Ansible Connectivity') {
+            steps {
+                dir("${ANSIBLE_DIR}") {
+                    sh '''
+                        set -e
+                        . .venv/bin/activate
+
+                        ansible role_kafka \
+                            -i aws_ec2.yml \
+                            -m ping
                     '''
                 }
             }
@@ -97,11 +171,12 @@ pipeline {
             steps {
                 dir("${ANSIBLE_DIR}") {
                     sh '''
-                    . .venv/bin/activate
+                        set -e
+                        . .venv/bin/activate
 
-                    ansible-playbook \
-                        -i aws_ec2.yml \
-                        playbooks/deploy_kafka.yml
+                        ansible-playbook \
+                            -i aws_ec2.yml \
+                            playbooks/deploy_kafka.yml
                     '''
                 }
             }
@@ -111,11 +186,12 @@ pipeline {
             steps {
                 dir("${ANSIBLE_DIR}") {
                     sh '''
-                    . .venv/bin/activate
+                        set -e
+                        . .venv/bin/activate
 
-                    ansible-playbook \
-                        -i aws_ec2.yml \
-                        playbooks/health_check.yml
+                        ansible-playbook \
+                            -i aws_ec2.yml \
+                            playbooks/health_check.yml
                     '''
                 }
             }
@@ -133,11 +209,14 @@ pipeline {
         failure {
             echo '======================================='
             echo ' Deployment failed'
-            echo ' Check stage logs'
+            echo ' Check the failed Jenkins stage logs'
             echo '======================================='
         }
 
         always {
+            sh '''
+                rm -f terraform/tfplan || true
+            '''
             echo 'Pipeline finished.'
         }
     }
